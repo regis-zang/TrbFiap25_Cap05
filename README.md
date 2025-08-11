@@ -1,24 +1,31 @@
 # TrbFiap25_Cap05
 Trab Melhores Compras DATA VIZ E DATA SCIENCE 
 
+## 001 Primeiro Desafio
 
-## ETL
-[## Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
+### ETL
+[Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
 
-## Data VIZ
-[## Segunda Etapa Parte 001 - Data Viz usando SAP Analytics Cloud](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/002%20-%20StoryTelling%20no%20SAC.md)
+### Data VIZ
+[Segunda Etapa Parte 001 - Data Viz usando SAP Analytics Cloud](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/002%20-%20StoryTelling%20no%20SAC.md)
 
- ## Segunda Etapa Parte 002 - Data Viz usando Tableau
+ ### Segunda Etapa Parte 002 - Data Viz usando Tableau
  Detalhes aplicado na Vizualização de dados Tableau
 
- ## Segunda Etapa Parte 003 - Data Viz usando PowerBi
+ ### Segunda Etapa Parte 003 - Data Viz usando PowerBi
  Detalhes aplicado na Vizualização de dados PowerBi
 
- ## Segunda Etapa Parte 004 - Data Viz usando Python
+ ### Segunda Etapa Parte 004 - Data Viz usando Python - Estou atuando Aqui
  Detalhes aplicado na Vizualização de dados Python
 
 
-#1 - Yahoo Finance "Understand better the Data provider"
-#2 - R-Script "First moment in The Language R"
-#3 - Google Drive "Simulate Youre Corporate System File"
-#4 - SAC Creating Model "Preparing Model to start."
+## 002 Segundo Desafio
+A fazer.....
+## **1.3  Segundo desafio: Explorando e Analisando Dados para uso em Ciência de Dados**
+
+
+
+
+## 003 Terceiro Desafio
+A fazer.....
+**1.4  Terceiro desafio: Apoiar a área de Marketing da empresa Melhores Compras com o método estatístico de regressão linear**  
