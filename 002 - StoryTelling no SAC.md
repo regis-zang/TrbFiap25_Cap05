@@ -50,7 +50,7 @@
 - **Grade 3 col x 2 lin (gráficos)**:
     
     1. Série temporal: Itens × Pedidos (linhas) + Receita (eixo secundário).
-       <center> <img src="img/Pasted image 20250811114629.png" width="600" height="300"> </center> <br>
+       <center> <img src="img/Pasted image 20250811114629.png" width="800" height="500"> </center> <br>
 	   
         
     3. Barras horizontais: Receita por Categoria (com % do total).
