@@ -50,20 +50,21 @@
 - **Grade 3 col x 2 lin (gráficos)**:
     
     1. Série temporal: Itens × Pedidos (linhas) + Receita (eixo secundário).
-	    ![[Pasted image 20250811114629.png]]
+       <center> <img src="img/Pasted image 20250811114629.png" width="600" height="300"> </center> <br>
+	   
         
-    2. Barras horizontais: Receita por Categoria (com % do total).
+    3. Barras horizontais: Receita por Categoria (com % do total).
 	    ![[Pasted image 20250811120344.png]]
         
-    3. Mapa: Receita por Estado/Cidade.
+    4. Mapa: Receita por Estado/Cidade.
         ![[Pasted image 20250811134800.png]]
-    4. Linha: Ticket Médio por mês.
-    5. ![[Pasted image 20250811135415.png]]
+    5. Linha: Ticket Médio por mês.
+    6. ![[Pasted image 20250811135415.png]]
         
-    6. Barras: Top 10 Clientes por Receita.
+    7. Barras: Top 10 Clientes por Receita.
 	    ![[Pasted image 20250811135738.png]]
         
-    7. Donut: Receita por Canal.
+    8. Donut: Receita por Canal.
         ![[Pasted image 20250811140344.png]]
 
 ## 4) Entrega Word (screenshots + explicações)
