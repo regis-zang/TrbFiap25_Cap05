@@ -57,15 +57,16 @@
         <center> <img src="img/Pasted image 20250811120344.png" width="800" height="500"> </center> <br>
 
         
-    5. Mapa: Receita por Estado/Cidade.
-        ![[Pasted image 20250811134800.png]]
-    6. Linha: Ticket Médio por mês.
-    7. ![[Pasted image 20250811135415.png]]
+    5. Mapa de calor: Receita por Estado/Cidade.
+       <center> <img src="img/Pasted image 20250811134800.png" width="800" height="500"> </center> <br>
+       
+    7. Linha: Ticket Médio por mês.
+    8. ![[Pasted image 20250811135415.png]]
         
-    8. Barras: Top 10 Clientes por Receita.
+    9. Barras: Top 10 Clientes por Receita.
 	    ![[Pasted image 20250811135738.png]]
         
-    9. Donut: Receita por Canal.
+    10. Donut: Receita por Canal.
         ![[Pasted image 20250811140344.png]]
 
 ## 4) Entrega Word (screenshots + explicações)
