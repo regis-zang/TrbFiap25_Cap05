@@ -3,7 +3,7 @@ Trab Melhores Compras DATA VIZ E DATA SCIENCE
 
 ```
 
-[## Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)(https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
+[# Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
  Resumo dos Ajustes de Qualidade de Dados em Python
 
 ## Segunda Etapa Parte 001 - Data Viz usando SAP Analytics Cloud
