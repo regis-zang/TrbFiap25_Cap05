@@ -42,7 +42,7 @@
 
 - **Linha 1 (cards métricos)**: Receita (LTM/Total), Pedidos, Itens, Ticket Médio.
 
-<center> <img src="img/Pasted image 20250810161727.png" width="600" height="300"> </center> <br>
+<center> <img src="img/Pasted image 20250810161727.png" width="800" height="500"> </center> <br>
     
 - **Lateral (filtros)**: Tempo, Categoria, Canal, Geografia, Cliente.
 
