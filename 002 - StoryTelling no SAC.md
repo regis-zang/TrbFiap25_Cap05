@@ -69,7 +69,7 @@
 	    
         
     12. Donut: Receita por Canal.
-    13.  <center> <img src="img/Pasted image 20250811140344.png" width="800" height="500"> </center> <br>
+    13.  <center> <img src="img/Pasted image 20250811140344.png" width="400" height="200"> </center> <br>
       
 
 ## 4) Entrega Word (screenshots + explicações)
