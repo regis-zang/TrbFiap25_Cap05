@@ -40,10 +40,9 @@
 
 ## 3) Storytelling (layout do Story)
 
-- **Linha 1 (cards métricos)**: Receita (LTM/Total), Pedidos, Itens, Ticket Médio, Crescimento YoY.
--![[Pasted image 20250810161727.png]]
+- **Linha 1 (cards métricos)**: Receita (LTM/Total), Pedidos, Itens, Ticket Médio.
 
-<center> <img src="img/Pasted image 20250810161727.png" width="200" height="100"> </center> <br>
+<center> <img src="img/Pasted image 20250810161727.png" width="600" height="300"> </center> <br>
     
 - **Lateral (filtros)**: Tempo, Categoria, Canal, Geografia, Cliente.
 
