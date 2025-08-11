@@ -61,12 +61,13 @@
        <center> <img src="img/Pasted image 20250811134800.png" width="800" height="500"> </center> <br>
        
     7. Linha: Ticket Médio por mês.
-    8. ![[Pasted image 20250811135415.png]]
+   <center> <img src="img/Pasted image 20250811135415.png" width="800" height="500"> </center> <br>
+  
         
-    9. Barras: Top 10 Clientes por Receita.
+    10. Barras: Top 10 Clientes por Receita.
 	    ![[Pasted image 20250811135738.png]]
         
-    10. Donut: Receita por Canal.
+    11. Donut: Receita por Canal.
         ![[Pasted image 20250811140344.png]]
 
 ## 4) Entrega Word (screenshots + explicações)
