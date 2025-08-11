@@ -1,13 +1,15 @@
 # TrbFiap25_Cap05
 Trab Melhores Compras DATA VIZ E DATA SCIENCE 
 
-```
 
-[# Primeira Etapa Analise e Limpeza dos Dados]
+
+[## Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
 
 ## Segunda Etapa Parte 001 - Data Viz usando SAP Analytics Cloud
  Detalhes aplicado na Vizualização de dados Utilizando SAC
-[#1 - Yahoo Finance](https://github.com/regis-zang/ExploringRscriptAndSAPPredictiveAnalysis/blob/main/1_Yahoo_Finance.md)
+
+
+https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md
 "Understand better the Data provider" <br>
 
  ## Segunda Etapa Parte 002 - Data Viz usando Tableau
