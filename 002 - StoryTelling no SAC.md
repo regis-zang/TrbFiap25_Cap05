@@ -53,18 +53,19 @@
        <center> <img src="img/Pasted image 20250811114629.png" width="800" height="500"> </center> <br>
 	   
         
-    3. Barras horizontais: Receita por Categoria (com % do total).
-	    ![[Pasted image 20250811120344.png]]
+    3. Barras horizontais: Receita por Categoria.
+        <center> <img src="img/Pasted image 20250811120344.png" width="800" height="500"> </center> <br>
+
         
-    4. Mapa: Receita por Estado/Cidade.
+    5. Mapa: Receita por Estado/Cidade.
         ![[Pasted image 20250811134800.png]]
-    5. Linha: Ticket Médio por mês.
-    6. ![[Pasted image 20250811135415.png]]
+    6. Linha: Ticket Médio por mês.
+    7. ![[Pasted image 20250811135415.png]]
         
-    7. Barras: Top 10 Clientes por Receita.
+    8. Barras: Top 10 Clientes por Receita.
 	    ![[Pasted image 20250811135738.png]]
         
-    8. Donut: Receita por Canal.
+    9. Donut: Receita por Canal.
         ![[Pasted image 20250811140344.png]]
 
 ## 4) Entrega Word (screenshots + explicações)
