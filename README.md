@@ -2,15 +2,11 @@
 Trab Melhores Compras DATA VIZ E DATA SCIENCE 
 
 
-
+## ETL
 [## Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
 
-## Segunda Etapa Parte 001 - Data Viz usando SAP Analytics Cloud
- Detalhes aplicado na Vizualização de dados Utilizando SAC
-
-
-https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md
-"Understand better the Data provider" <br>
+## Data VIZ
+[## Segunda Etapa Parte 001 - Data Viz usando SAP Analytics Cloud](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/002%20-%20StoryTelling%20no%20SAC.md)
 
  ## Segunda Etapa Parte 002 - Data Viz usando Tableau
  Detalhes aplicado na Vizualização de dados Tableau
@@ -19,7 +15,7 @@ https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md
  Detalhes aplicado na Vizualização de dados PowerBi
 
  ## Segunda Etapa Parte 004 - Data Viz usando Python
- Detalhes aplicado na Vizualização de dados PowerBi
+ Detalhes aplicado na Vizualização de dados Python
 
 
 #1 - Yahoo Finance "Understand better the Data provider"
