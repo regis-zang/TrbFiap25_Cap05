@@ -65,9 +65,10 @@
   
         
     10. Barras: Top 10 Clientes por Receita.
-	    ![[Pasted image 20250811135738.png]]
+          <center> <img src="img/Pasted image 20250811135738.png" width="800" height="500"> </center> <br>
+	    
         
-    11. Donut: Receita por Canal.
+    12. Donut: Receita por Canal.
         ![[Pasted image 20250811140344.png]]
 
 ## 4) Entrega Word (screenshots + explicações)
