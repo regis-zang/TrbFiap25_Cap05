@@ -4,7 +4,9 @@ Trab Melhores Compras DATA VIZ E DATA SCIENCE
 ```
 
 [# Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
- Resumo dos Ajustes de Qualidade de Dados em Python
+ Resumo dos Ajustes de Qualidade de Dados em Python  <br>
+[#1 - Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
+"Primeira Etapa Analise e Limpeza dos Dadosr" <br>
 
 ## Segunda Etapa Parte 001 - Data Viz usando SAP Analytics Cloud
  Detalhes aplicado na Vizualização de dados Utilizando SAC
@@ -17,3 +19,9 @@ Trab Melhores Compras DATA VIZ E DATA SCIENCE
 
  ## Segunda Etapa Parte 004 - Data Viz usando Python
  Detalhes aplicado na Vizualização de dados PowerBi
+
+
+#1 - Yahoo Finance "Understand better the Data provider"
+#2 - R-Script "First moment in The Language R"
+#3 - Google Drive "Simulate Youre Corporate System File"
+#4 - SAC Creating Model "Preparing Model to start."
