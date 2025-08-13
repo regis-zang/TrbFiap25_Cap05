@@ -72,13 +72,21 @@ with tab1:
     fig_ts.update_layout(legend_title=None, xaxis_title="", yaxis_title="")
     left.plotly_chart(fig_ts, use_container_width=True)
 
-    # Barras por categoria
+    # Barras por categoria (ordem decrescente sem limite)
     if "categoria" in df_f.columns and not df_f["categoria"].dropna().empty:
         g = (
             df_f.groupby("categoria", dropna=False)["receita"]
-            .sum().sort_values(ascending=False).head(15)
-        ).reset_index()
-        fig_cat = px.bar(g, x="receita", y="categoria", orientation="h", title="Receita por Categoria (Top 15)")
+            .sum()
+            .sort_values(ascending=False)
+            .reset_index()
+        )
+        fig_cat = px.bar(
+            g,
+            x="receita",
+            y="categoria",
+            orientation="h",
+            title="Receita por Categoria (ordem decrescente)"
+        )
         fig_cat.update_layout(xaxis_title="Receita", yaxis_title="")
         right.plotly_chart(fig_cat, use_container_width=True)
 
@@ -108,3 +116,4 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
