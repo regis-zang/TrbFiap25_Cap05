@@ -79,7 +79,12 @@ st.sidebar.header("Filtros")
 anos = st.sidebar.multiselect("Ano", options=opts["anos"], default=opts["anos"])
 meses = st.sidebar.multiselect("Mês (YYYY-MM)", options=opts["meses"], default=[])
 cats  = st.sidebar.multiselect("Categoria", options=opts["categorias"], default=[])
-canais= st.sidebar.multiselect("Canal", options=opts["canais"], default=[])
+
+# se opts["canais"] vier vazio, usa o fallback calculado acima
+base_canais = opts.get("canais", []) or canal_opts
+label_canal = "Canal (Forma de Pagamento)" if "forma_pagamento" in df.columns else "Canal"
+canais = st.sidebar.multiselect(label_canal, options=base_canais, default=[])
+
 ufs   = st.sidebar.multiselect("UF", options=opts["estados"], default=[])
 resps = st.sidebar.multiselect("Responsável do Pedido", options=opts["responsaveis"], default=[])
 
@@ -167,6 +172,7 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
 
 
 
