@@ -22,7 +22,7 @@ with col_logo:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH), use_container_width=True)
 with col_title:
-    st.markdown("# 📊 Melhores Compras – Dashboard de Vendas")
+    st.markdown("# 📊 Mapa de Oportunidades (Pet)")
     st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas")
 
 @st.cache_data(show_spinner=False)
@@ -186,4 +186,5 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
 
