@@ -1,3 +1,4 @@
+# app_streamlit.py
 import streamlit as st, plotly.express as px, pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -109,7 +110,6 @@ def compute_metric_by_uf(df: pd.DataFrame, metric: str) -> pd.Series:
         s = tmp.groupby(uf_col)["valor_comissao"].sum()
 
     else:
-        # fallback seguro
         s = pd.Series(dtype=float)
 
     s = pd.to_numeric(s, errors="coerce").fillna(0.0).astype(float)
@@ -141,29 +141,22 @@ def adjust_bubble_sizes(
     size_max_px: int = 22,
     size_min_px: int = 3,
     bubble_fill: str = "rgba(120,120,120,0.85)",   # cinza (preenchimento)
-    bubble_border: str = "rgba(30,30,30,0.95)"     # contorno mais escuro
+    bubble_border: str = "rgba(30,30,30,0.95)"     # contorno
 ):
     """Redimensiona as bolhas e aplica estilo cinza com contorno."""
     if not fig.data:
         return fig
     tr = fig.data[0]
-
-    # alinhar série à ordem do trace
     arr = _align_series_to_trace(values_by_uf, tr)
-
-    # escala por área
     maxv = float(arr.max()) if arr.size else 0.0
     tr.marker.sizemode = "area"
     tr.marker.sizemin = size_min_px
     tr.marker.size = arr
     tr.marker.sizeref = 2.0 * maxv / (size_max_px ** 2) if maxv > 0 else 1.0
-
-    # >>> estilo em CINZA <<<
     tr.marker.color = bubble_fill
     if not hasattr(tr.marker, "line") or tr.marker.line is None:
         tr.marker.line = {}
     tr.marker.line.update(width=1.4, color=bubble_border)
-
     return fig
 
 def _format_brl(v: float, decimals: int = 0) -> str:
@@ -172,13 +165,11 @@ def _format_brl(v: float, decimals: int = 0) -> str:
     return f"R$ {s}"
 
 def apply_bubble_hover(fig, values_by_uf: pd.Series, metric: str):
-    """Configura o hover: Ticket Médio / Lucro Líquido / Valor de Comissão (sem conversão para milhões)."""
+    """Hover SEM conversão p/ milhões (Ticket Médio, Lucro Líquido, Valor de Comissão)."""
     if not fig.data: return fig
     tr = fig.data[0]
     arr = _align_series_to_trace(values_by_uf, tr)
     label_expr = "%{hovertext}" if getattr(tr, "hovertext", None) is not None else "%{location}"
-
-    # Formatação: Ticket Médio com 2 casas; os demais sem casas (se preferir, mude 0->2)
     decimals = 2 if metric == "Ticket Médio" else 0
     formatted = np.array([_format_brl(v, decimals=decimals) for v in arr], dtype=object)
     tr.customdata = formatted
@@ -224,10 +215,10 @@ else:
 ufs   = st.sidebar.multiselect("UF", options=opts["estados"], default=[])
 resps = st.sidebar.multiselect("Responsável do Pedido", options=opts["responsaveis"], default=[])
 
-# Opções do mapa de bolhas (sem 'Receita')
+# Opções do mapa de bolhas (REMOVIDO: escala logarítmica)
 with st.sidebar.expander("Mapa de bolhas – opções", expanded=False):
     metric_options = []
-    if "pedido_id" in df.columns and "receita" in df.columns:  # garantia para cálculo do ticket
+    if "pedido_id" in df.columns and "receita" in df.columns:
         metric_options.append("Ticket Médio")
     if "lucro_liquido" in df.columns:
         metric_options.append("Lucro Líquido")
@@ -236,7 +227,6 @@ with st.sidebar.expander("Mapa de bolhas – opções", expanded=False):
     metric_choice = st.selectbox("Métrica", options=metric_options, index=0 if metric_options else None)
     size_max_px = st.slider("Tamanho máximo (px)", min_value=8, max_value=60, value=22, step=1)
     size_min_px = st.slider("Tamanho mínimo (px)", min_value=0, max_value=10, value=3, step=1)
-    use_log_size = st.checkbox("Escala logarítmica (tamanho)", value=False)
 
 # Aplica filtros principais
 df_f = filter_df(df, anos=anos, meses=meses, categorias=cats, canais=canais, estados=ufs, responsaveis=resps)
@@ -315,26 +305,31 @@ with tab2:
     fig_ch = format_choropleth_hover_mm(fig_ch)
     c1.plotly_chart(fig_ch, use_container_width=True)
 
-    # Mapa 2: Bolhas com base de área + métrica escolhida (sem Receita na lista)
-    # 1) base de área pastel
+    # Mapa 2: Bolhas com base de área + métrica escolhida (sem log)
+    # 1) base
     fig_base = choropleth_receita_por_uf(df_f)
     fig_base = prep_area_base(fig_base)
 
     # 2) bolhas
     fig_bu = bubblemap_receita_por_uf(df_f, size_max=45, use_log=False)
     metric_series = compute_metric_by_uf(df_f, metric_choice) if metric_choice else pd.Series(dtype=float)
-    if use_log_size:
-        metric_series = np.log1p(metric_series)
 
     fig_bu = adjust_bubble_sizes(fig_bu, metric_series, size_max_px=size_max_px, size_min_px=size_min_px)
     fig_bu = apply_bubble_hover(fig_bu, metric_series, metric_choice or "")
 
-    # 3) sobreposição e título dinâmico
+    # 3) sobreposição e título
     fig_base.add_traces(fig_bu.data)
     title = f"{metric_choice} por UF" if metric_choice else "Métrica por UF"
     fig_base.update_layout(title=title, geo=fig_bu.layout.geo)
 
+    # anotação indicando escala linear
+    fig_base.add_annotation(
+        x=0.01, y=0.01, xref="paper", yref="paper", showarrow=False,
+        text="Tamanho das bolhas em escala linear",
+        font=dict(size=11, color="#444"),
+        bgcolor="rgba(255,255,255,0.65)"
+    )
+
     c2.plotly_chart(fig_base, use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
-
