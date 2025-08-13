@@ -242,7 +242,7 @@ k1.metric("Receita", f"R$ {m['Receita']:,.0f}".replace(",", "."))
 k2.metric("Pedidos", f"{m['Pedidos']:,}".replace(",", "."))
 k3.metric("Itens",   f"{m['Itens']:,.0f}".replace(",", "."))
 k4.metric("Ticket Médio", f"R$ {m['Ticket Médio']:,.2f}".replace(",", ".") if pd.notna(m['Ticket Médio']) else "—")
-k5.metric("Crescimento YoY", f"{m['YoY']:.2%}" if pd.notna(m['YoY']) else "—")
+# k5.metric("Crescimento YoY", f"{m['YoY']:.2%}" if pd.notna(m['YoY']) else "—")
 
 st.divider()
 
@@ -333,3 +333,4 @@ with tab2:
     c2.plotly_chart(fig_base, use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
