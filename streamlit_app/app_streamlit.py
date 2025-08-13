@@ -142,7 +142,7 @@ with tab1:
     if "responsavelpedido" in df_f.columns and not df_f["responsavelpedido"].dropna().empty:
         g = (
             df_f.groupby("responsavelpedido", dropna=False)["receita"]
-            .sum().sort_values(ascending=False).head(10)
+            .sum().sort_values(ascending=True).head(10)
         ).reset_index()
         fig_resp = px.bar(g, x="receita", y="responsavelpedido", orientation="h",
                           title="Top 10 Faturamento Bruto por Responsável do Pedido")
@@ -155,4 +155,5 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
 
