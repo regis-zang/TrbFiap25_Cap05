@@ -12,11 +12,7 @@ ASSETS_DIR = BASE_DIR / "DashImg"
 LOGO_PATH = ASSETS_DIR / "LogoMelhoresComprasPET_NEW.png"  # ajuste se o nome for outro
 
 # --- Config da página ---
-st.set_page_config(
-    page_title="Mapa de Oportunidades (Pet)",
-    page_icon="📊",
-    layout="wide"
-)
+st.set_page_config(page_title="Mapa de Oportunidades (Pet)", page_icon="📊", layout="wide")
 
 # --- Header ---
 col_logo, col_title = st.columns([1, 6])
@@ -47,10 +43,7 @@ def _unique_sorted(series: pd.Series):
 canal_opts = _unique_sorted(df["canal"]) if "canal" in df.columns else []
 
 # ---------- Centro de Distribuição ----------
-CENTRO_COL = next(
-    (c for c in ["centro_distribuicao_normalizado", "centro_distribuicao", "centro_id", "centro"] if c in df.columns),
-    None
-)
+CENTRO_COL = next((c for c in ["centro_distribuicao_normalizado", "centro_distribuicao", "centro_id", "centro"] if c in df.columns), None)
 centro_opts = _unique_sorted(df[CENTRO_COL]) if CENTRO_COL else []
 
 # ---------- Donut robusto (matplotlib) ----------
@@ -60,20 +53,14 @@ def donut_canal_streamlit(df: pd.DataFrame):
     if not col or "receita" not in df.columns:
         st.info("Colunas necessárias para o donut não encontradas.")
         return
-
     tmp = df[[col, "receita"]].copy()
     tmp[col] = tmp[col].astype(str).str.strip()
     tmp["receita"] = pd.to_numeric(tmp["receita"], errors="coerce")
-
-    g = (tmp.dropna()
-           .groupby(col, dropna=False)["receita"]
-           .sum()
-           .sort_values(ascending=False))
+    g = (tmp.dropna().groupby(col, dropna=False)["receita"].sum().sort_values(ascending=False))
     g = g[g > 0]
     if g.empty:
         st.warning("Sem valores positivos para plotar no donut.")
         return
-
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.pie(g.values, labels=g.index.astype(str), autopct="%1.1f%%", startangle=90)
     centre_circle = plt.Circle((0, 0), 0.65, fc="white")
@@ -84,29 +71,18 @@ def donut_canal_streamlit(df: pd.DataFrame):
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
-# ---------- Hover dos mapas em R$ MM ----------
-def format_hover_as_millions(fig, add_title_suffix=True, title_suffix=" – R$ MM", metric_label="Receita"):
-    if add_title_suffix and getattr(fig.layout, "title", None) and getattr(fig.layout.title, "text", None):
-        if title_suffix not in fig.layout.title.text:
-            fig.update_layout(title=str(fig.layout.title.text) + title_suffix)
-
+# ---------- Hover do choropleth em R$ MM (apenas receita) ----------
+def format_choropleth_hover_mm(fig):
     for tr in fig.data:
-        vals = None
-        # choropleth: valores em z
         if hasattr(tr, "z") and tr.z is not None:
-            vals = np.array(tr.z, dtype=float)
-        else:
-            # scatter_geo: tenta color > size
-            if hasattr(tr, "marker") and tr.marker is not None:
-                if isinstance(getattr(tr.marker, "color", None), (list, tuple, np.ndarray)):
-                    vals = np.array(tr.marker.color, dtype=float)
-                elif isinstance(getattr(tr.marker, "size", None), (list, tuple, np.ndarray)):
-                    vals = np.array(tr.marker.size, dtype=float)
-
-        if vals is not None and vals.size:
-            tr.customdata = vals / 1e6  # milhões
+            vals = np.array(tr.z, dtype=float) / 1e6
+            tr.customdata = vals
             label_expr = "%{hovertext}" if getattr(tr, "hovertext", None) is not None else "%{location}"
-            tr.hovertemplate = f"{label_expr}<br>{metric_label}=R$ " + "%{customdata:.1f} MM<extra></extra>"
+            tr.hovertemplate = f"{label_expr}<br>Receita=R$ " + "%{customdata:.1f} MM<extra></extra>"
+    # acrescenta sufixo ao título
+    if getattr(fig.layout, "title", None) and getattr(fig.layout.title, "text", None):
+        if "– R$ MM" not in fig.layout.title.text:
+            fig.update_layout(title=str(fig.layout.title.text) + " – R$ MM")
     return fig
 
 # ---------- Métrica p/ mapa de bolhas ----------
@@ -116,62 +92,87 @@ def compute_metric_by_uf(df: pd.DataFrame, metric: str) -> pd.Series:
     if uf_col is None:
         return pd.Series(dtype=float)
 
-    def num(s: pd.Series) -> pd.Series:
-        return pd.to_numeric(s, errors="coerce")
+    to_num = lambda s: pd.to_numeric(s, errors="coerce")
 
     if metric == "Ticket Médio":
         tmp = df[[uf_col, "receita", "pedido_id"]].copy()
-        tmp["receita"] = num(tmp["receita"])
-        grp = tmp.groupby(uf_col).agg(
-            receita=("receita", "sum"),
-            pedidos=("pedido_id", "nunique"),
-        )
+        tmp["receita"] = to_num(tmp["receita"])
+        grp = tmp.groupby(uf_col).agg(receita=("receita", "sum"), pedidos=("pedido_id", "nunique"))
         s = (grp["receita"] / grp["pedidos"]).replace([np.inf, -np.inf], np.nan)
 
     elif metric == "Lucro Líquido" and "lucro_liquido" in df.columns:
         tmp = df[[uf_col, "lucro_liquido"]].copy()
-        tmp["lucro_liquido"] = num(tmp["lucro_liquido"])
+        tmp["lucro_liquido"] = to_num(tmp["lucro_liquido"])
         s = tmp.groupby(uf_col)["lucro_liquido"].sum()
 
     elif metric == "Valor de Comissão" and "valor_comissao" in df.columns:
         tmp = df[[uf_col, "valor_comissao"]].copy()
-        tmp["valor_comissao"] = num(tmp["valor_comissao"])
+        tmp["valor_comissao"] = to_num(tmp["valor_comissao"])
         s = tmp.groupby(uf_col)["valor_comissao"].sum()
 
     else:  # Receita (default)
         tmp = df[[uf_col, "receita"]].copy()
-        tmp["receita"] = num(tmp["receita"])
+        tmp["receita"] = to_num(tmp["receita"])
         s = tmp.groupby(uf_col)["receita"].sum()
 
     s = pd.to_numeric(s, errors="coerce").fillna(0.0).astype(float)
     return s.clip(lower=0.0)
 
-def adjust_bubble_sizes(fig, values_by_uf: pd.Series, size_max_px: int = 22, size_min_px: int = 3):
-    """Redimensiona bolhas do scatter_geo do Plotly para o range desejado."""
-    if not fig.data:
-        return fig
-    tr = fig.data[0]
-
-    labels = None
+# ---------- Utilitários de bolhas ----------
+def _trace_labels(tr):
     if hasattr(tr, "hovertext") and isinstance(tr.hovertext, (list, tuple, np.ndarray)):
-        labels = [str(x).split("<")[0].strip().upper() for x in tr.hovertext]
-    elif hasattr(tr, "locations") and tr.locations is not None:
-        labels = [str(x).strip().upper() for x in tr.locations]
-    elif hasattr(tr, "text") and isinstance(tr.text, (list, tuple, np.ndarray)):
-        labels = [str(x).split("<")[0].strip().upper() for x in tr.text]
+        return [str(x).split("<")[0].strip().upper() for x in tr.hovertext]
+    if hasattr(tr, "locations") and tr.locations is not None:
+        return [str(x).strip().upper() for x in tr.locations]
+    if hasattr(tr, "text") and isinstance(tr.text, (list, tuple, np.ndarray)):
+        return [str(x).split("<")[0].strip().upper() for x in tr.text]
+    return None
 
-    def norm_key(x): return str(x).strip().upper()[:2]
+def _align_series_to_trace(series_by_uf: pd.Series, tr) -> np.ndarray:
+    """Retorna valores numéricos na mesma ordem dos pontos do trace."""
+    labels = _trace_labels(tr)
+    def key(x): return str(x).strip().upper()[:2]
     if labels:
-        sizes = [float(values_by_uf.get(norm_key(k), np.nan)) for k in labels]
+        vals = [float(series_by_uf.get(key(k), np.nan)) for k in labels]
     else:
-        sizes = values_by_uf.values.tolist()
+        vals = series_by_uf.values.tolist()
+    arr = np.array([0 if (pd.isna(v) or v < 0) else v for v in vals], dtype=float)
+    return arr
 
-    arr = np.array([0 if (pd.isna(v) or v < 0) else v for v in sizes], dtype=float)
+def adjust_bubble_sizes(fig, values_by_uf: pd.Series, size_max_px: int = 22, size_min_px: int = 3):
+    if not fig.data: return fig
+    tr = fig.data[0]
+    arr = _align_series_to_trace(values_by_uf, tr)
     maxv = float(arr.max()) if arr.size else 0.0
     tr.marker.sizemode = "area"
     tr.marker.sizemin = size_min_px
     tr.marker.size = arr
     tr.marker.sizeref = 2.0 * maxv / (size_max_px ** 2) if maxv > 0 else 1.0
+    return fig
+
+def _format_brl(v: float, decimals: int = 0) -> str:
+    s = f"{v:,.{decimals}f}"
+    s = s.replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {s}"
+
+def apply_bubble_hover(fig, values_by_uf: pd.Series, metric: str):
+    """Configura o hover:
+       - Receita: R$ x.y MM
+       - Demais métricas: BRL sem conversão (1.234.567,89)"""
+    if not fig.data: return fig
+    tr = fig.data[0]
+    arr = _align_series_to_trace(values_by_uf, tr)
+
+    label_expr = "%{hovertext}" if getattr(tr, "hovertext", None) is not None else "%{location}"
+
+    if metric == "Receita":
+        tr.customdata = (arr / 1e6).astype(float)
+        tr.hovertemplate = f"{label_expr}<br>{metric}=R$ " + "%{customdata:.1f} MM<extra></extra>"
+    else:
+        decimals = 2 if metric == "Ticket Médio" else 0
+        formatted = np.array([_format_brl(v, decimals=decimals) for v in arr], dtype=object)
+        tr.customdata = formatted
+        tr.hovertemplate = f"{label_expr}<br>{metric}=%{{customdata}}<extra></extra>"
     return fig
 
 # ---------------- Sidebar (filtros) ----------------
@@ -279,18 +280,25 @@ with tab1:
 with tab2:
     c1, c2 = st.columns(2)
 
-    # Choropleth — hover em R$ MM
+    # Choropleth — Receita com hover em MM
     fig_ch = choropleth_receita_por_uf(df_f)
-    fig_ch = format_hover_as_millions(fig_ch, metric_label="Receita")
+    fig_ch = format_choropleth_hover_mm(fig_ch)
     c1.plotly_chart(fig_ch, use_container_width=True)
 
-    # Bubble map — métrica selecionada + controle de tamanho + hover em R$ MM
+    # Bubble map — métrica escolhida
     fig_bu = bubblemap_receita_por_uf(df_f, size_max=45, use_log=False)
+
     metric_series = compute_metric_by_uf(df_f, metric_choice)
     if use_log_size:
         metric_series = np.log1p(metric_series)
+
     fig_bu = adjust_bubble_sizes(fig_bu, metric_series, size_max_px=size_max_px, size_min_px=size_min_px)
-    fig_bu = format_hover_as_millions(fig_bu, metric_label=metric_choice)
+    fig_bu = apply_bubble_hover(fig_bu, metric_series, metric_choice)
+
+    # título dinâmico (para Receita, inclui sufixo R$ MM)
+    title = f"{metric_choice} por UF" + (" – R$ MM" if metric_choice == "Receita" else "")
+    fig_bu.update_layout(title=title)
+
     c2.plotly_chart(fig_bu, use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
