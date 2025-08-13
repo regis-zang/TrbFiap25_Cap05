@@ -138,15 +138,27 @@ with tab1:
     with right:
         donut_canal_streamlit(df_f)
 
-    # Top responsável do pedido
+    # Top responsável do pedido (maior valor no topo)
     if "responsavelpedido" in df_f.columns and not df_f["responsavelpedido"].dropna().empty:
         g = (
             df_f.groupby("responsavelpedido", dropna=False)["receita"]
-            .sum().sort_values(ascending=False).head(10)
-        ).reset_index()
-        fig_resp = px.bar(g, x="receita", y="responsavelpedido", orientation="h",
-                          title="Top 10 Faturamento Bruto por Responsável do Pedido")
-        fig_resp.update_layout(xaxis_title="Receita", yaxis_title="")
+            .sum()
+            .sort_values(ascending=False)  # já ordena do maior para o menor
+            .head(10)
+            .reset_index()
+        )
+        fig_resp = px.bar(
+            g,
+            x="receita",
+            y="responsavelpedido",
+            orientation="h",
+            title="Top 10 Faturamento Bruto por Responsável do Pedido"
+        )
+        fig_resp.update_layout(
+            xaxis_title="Receita",
+            yaxis_title="",
+            yaxis=dict(autorange="reversed")  # inverte o eixo Y para maior no topo
+        )
         left.plotly_chart(fig_resp, use_container_width=True)
 
 with tab2:
@@ -155,6 +167,7 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
 
 
 
