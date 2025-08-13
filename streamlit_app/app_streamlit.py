@@ -120,7 +120,7 @@ with tab1:
         g = (
             df_f.groupby("categoria", dropna=False)["receita"]
             .sum()
-            .sort_values(ascending=True)   # menor->maior
+            .sort_values(ascending=False)   # menor->maior
             .reset_index()
         )
         fig_cat = px.bar(
@@ -128,7 +128,7 @@ with tab1:
             x="receita",
             y="categoria",
             orientation="h",
-            title="Receita por Categoria (ordem decrescente)"
+            title="Receita por Categoria"
         )
         fig_cat.update_layout(xaxis_title="Receita", yaxis_title="")
         fig_cat.update_yaxes(autorange="reversed")  # coloca as maiores no topo
@@ -155,3 +155,4 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
