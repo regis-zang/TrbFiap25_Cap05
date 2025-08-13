@@ -1,5 +1,6 @@
 import streamlit as st, plotly.express as px, pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 from pathlib import Path
 from core_dataviz import load_df, filter_df, kpis, choices
 from maps_plotly import choropleth_receita_por_uf, bubblemap_receita_por_uf
@@ -7,16 +8,12 @@ from maps_plotly import choropleth_receita_por_uf, bubblemap_receita_por_uf
 # --- Paths para assets ---
 BASE_DIR = Path(__file__).parent
 ASSETS_DIR = BASE_DIR / "DashImg"
-LOGO_PATH = ASSETS_DIR / "LogoMelhoresComprasPET_NEW.png"  # ajuste se o nome for outro
+LOGO_PATH = ASSETS_DIR / "LogoMelhoresComprasPET_NEW.png"
 
-# --- Configuração da página ---
-st.set_page_config(
-    page_title="Mapa de Oportunidades (Pet)",
-    page_icon="📊",
-    layout="wide"
-)
+# --- Config da página ---
+st.set_page_config(page_title="Mapa de Oportunidades (Pet)", page_icon="📊", layout="wide")
 
-# --- Header com logo + título ---
+# --- Header ---
 col_logo, col_title = st.columns([1, 6])
 with col_logo:
     if LOGO_PATH.exists():
@@ -32,7 +29,7 @@ def _load():
 
 df, opts = _load()
 
-# ---------- Fallback: Canal = Forma de Pagamento (se 'canal' não existir) ----------
+# ---------- Fallback: Canal = Forma de Pagamento ----------
 CANAL_FALLBACK_ACTIVE = False
 if "canal" not in df.columns and "forma_pagamento" in df.columns:
     df = df.copy()
@@ -42,41 +39,27 @@ if "canal" not in df.columns and "forma_pagamento" in df.columns:
 def _unique_sorted(series: pd.Series):
     return sorted(series.dropna().astype(str).str.strip().unique().tolist())
 
-# opções calculadas a partir do DF (usadas se opts["canais"] vier vazio)
 canal_opts = _unique_sorted(df["canal"]) if "canal" in df.columns else []
 
-# ---------- Centro de Distribuição: detectar coluna e opções ----------
-CENTRO_COL = next(
-    (c for c in ["centro_distribuicao_normalizado", "centro_distribuicao", "centro_id", "centro"] if c in df.columns),
-    None
-)
+# ---------- Centro de Distribuição ----------
+CENTRO_COL = next((c for c in ["centro_distribuicao_normalizado", "centro_distribuicao", "centro_id", "centro"] if c in df.columns), None)
 centro_opts = _unique_sorted(df[CENTRO_COL]) if CENTRO_COL else []
 
-# ---------- helper: donut robusto (matplotlib) ----------
+# ---------- Helper: donut robusto (matplotlib) ----------
 def donut_canal_streamlit(df: pd.DataFrame):
     cand_cols = ["canal", "canal_venda", "canal_vendas", "forma_pagamento"]
     col = next((c for c in cand_cols if c in df.columns), None)
-    if not col:
-        st.info("Nem 'canal' nem 'forma_pagamento' encontrados; pulando donut.")
+    if not col or "receita" not in df.columns:
+        st.info("Colunas necessárias para o donut não encontradas.")
         return
-    if "receita" not in df.columns:
-        st.info("Coluna 'receita' não encontrada.")
-        return
-
     tmp = df[[col, "receita"]].copy()
     tmp[col] = tmp[col].astype(str).str.strip()
     tmp["receita"] = pd.to_numeric(tmp["receita"], errors="coerce")
-
-    g = (tmp.dropna()
-            .groupby(col, dropna=False)["receita"]
-            .sum()
-            .sort_values(ascending=False))
-
-    g = g[g > 0]  # remove não-positivos
+    g = (tmp.dropna().groupby(col, dropna=False)["receita"].sum().sort_values(ascending=False))
+    g = g[g > 0]
     if g.empty:
         st.warning("Sem valores positivos para plotar no donut.")
         return
-
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.pie(g.values, labels=g.index.astype(str), autopct="%1.1f%%", startangle=90)
     centre_circle = plt.Circle((0, 0), 0.65, fc="white")
@@ -87,20 +70,48 @@ def donut_canal_streamlit(df: pd.DataFrame):
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
+# ---------- Helper: hover dos mapas em R$ MM ----------
+def format_hover_as_millions(fig, add_title_suffix=True, title_suffix=" – R$ MM"):
+    if add_title_suffix and getattr(fig.layout, "title", None) and getattr(fig.layout.title, "text", None):
+        if title_suffix not in fig.layout.title.text:
+            fig.update_layout(title=str(fig.layout.title.text) + title_suffix)
+
+    for tr in fig.data:
+        vals = None
+        # choropleth normalmente usa 'z'
+        if hasattr(tr, "z") and tr.z is not None:
+            vals = np.array(tr.z, dtype=float)
+        else:
+            # bubble/scatter: tenta color > size
+            if hasattr(tr, "marker") and tr.marker is not None:
+                if isinstance(getattr(tr.marker, "color", None), (list, tuple, np.ndarray)):
+                    vals = np.array(tr.marker.color, dtype=float)
+                elif isinstance(getattr(tr.marker, "size", None), (list, tuple, np.ndarray)):
+                    vals = np.array(tr.marker.size, dtype=float)
+
+        if vals is not None and vals.size:
+            tr.customdata = vals / 1e6  # milhões
+            # tenta preservar o label original
+            if getattr(tr, "hovertext", None) is not None:
+                label_expr = "%{hovertext}"
+            else:
+                # fallback comum em choropleth
+                label_expr = "%{location}"
+            tr.hovertemplate = f"{label_expr}<br>Receita=R$ "+"%{customdata:.1f} MM<extra></extra>"
+    return fig
+
 # ---------------- Sidebar (filtros) ----------------
 st.sidebar.header("Filtros")
 anos = st.sidebar.multiselect("Ano", options=opts["anos"], default=opts["anos"])
 meses = st.sidebar.multiselect("Mês (YYYY-MM)", options=opts["meses"], default=[])
 cats  = st.sidebar.multiselect("Categoria", options=opts["categororias"] if "categororias" in opts else opts["categorias"], default=[])
 
-# Canal (usa opts se houver, senão fallback calculado)
 base_canais = (opts.get("canais") or []) or canal_opts
 label_canal = "Canal (Forma de Pagamento)" if CANAL_FALLBACK_ACTIVE else "Canal"
 canais = st.sidebar.multiselect(label_canal, options=base_canais, default=[])
 if CANAL_FALLBACK_ACTIVE:
     st.sidebar.caption("↳ Canal mapeado a partir de **Forma de Pagamento**.")
 
-# Centro de Distribuição
 if CENTRO_COL:
     centros = st.sidebar.multiselect("Centro de Distribuição", options=centro_opts, default=[])
 else:
@@ -110,10 +121,9 @@ else:
 ufs   = st.sidebar.multiselect("UF", options=opts["estados"], default=[])
 resps = st.sidebar.multiselect("Responsável do Pedido", options=opts["responsaveis"], default=[])
 
-# filtros principais (anos, meses, categorias, canais, UFs, responsáveis)
+# filtros principais
 df_f = filter_df(df, anos=anos, meses=meses, categorias=cats, canais=canais, estados=ufs, responsaveis=resps)
-
-# filtro adicional por centro (aplicado localmente)
+# filtro adicional por centro
 if CENTRO_COL and centros:
     df_f = df_f[df_f[CENTRO_COL].astype(str).str.strip().isin(centros)]
 
@@ -173,18 +183,20 @@ with tab1:
             .head(10)
             .reset_index()
         )
-        fig_resp = px.bar(
-            g, x="receita", y="responsavelpedido", orientation="h",
-            title="Top 10 Faturamento Bruto por Responsável do Pedido"
-        )
+        fig_resp = px.bar(g, x="receita", y="responsavelpedido", orientation="h",
+                          title="Top 10 Faturamento Bruto por Responsável do Pedido")
         fig_resp.update_layout(xaxis_title="Receita", yaxis_title="", yaxis=dict(autorange="reversed"))
         left.plotly_chart(fig_resp, use_container_width=True)
 
 with tab2:
     c1, c2 = st.columns(2)
-    c1.plotly_chart(choropleth_receita_por_uf(df_f), use_container_width=True)
-    c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
+
+    fig_ch = choropleth_receita_por_uf(df_f)
+    fig_ch = format_hover_as_millions(fig_ch)  # hover: R$ x.y MM
+    c1.plotly_chart(fig_ch, use_container_width=True)
+
+    fig_bu = bubblemap_receita_por_uf(df_f, size_max=45, use_log=False)
+    fig_bu = format_hover_as_millions(fig_bu)  # hover: R$ x.y MM
+    c2.plotly_chart(fig_bu, use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
-
-
