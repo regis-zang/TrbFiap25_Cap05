@@ -40,10 +40,17 @@ if "canal" not in df.columns and "forma_pagamento" in df.columns:
     CANAL_FALLBACK_ACTIVE = True
 
 def _unique_sorted(series: pd.Series):
-    return sorted(series.dropna().astype(str).unique().tolist())
+    return sorted(series.dropna().astype(str).str.strip().unique().tolist())
 
 # opções calculadas a partir do DF (usadas se opts["canais"] vier vazio)
 canal_opts = _unique_sorted(df["canal"]) if "canal" in df.columns else []
+
+# ---------- Centro de Distribuição: detectar coluna e opções ----------
+CENTRO_COL = next(
+    (c for c in ["centro_distribuicao_normalizado", "centro_distribuicao", "centro_id", "centro"] if c in df.columns),
+    None
+)
+centro_opts = _unique_sorted(df[CENTRO_COL]) if CENTRO_COL else []
 
 # ---------- helper: donut robusto (matplotlib) ----------
 def donut_canal_streamlit(df: pd.DataFrame):
@@ -65,20 +72,13 @@ def donut_canal_streamlit(df: pd.DataFrame):
             .sum()
             .sort_values(ascending=False))
 
-    # remove não-positivos (pie não renderiza bem com <= 0)
-    g = g[g > 0]
+    g = g[g > 0]  # remove não-positivos
     if g.empty:
         st.warning("Sem valores positivos para plotar no donut.")
         return
 
-    # monta o donut
     fig, ax = plt.subplots(figsize=(6, 6))
-    wedges, texts, autotexts = ax.pie(
-        g.values,
-        labels=g.index.astype(str),
-        autopct="%1.1f%%",
-        startangle=90
-    )
+    ax.pie(g.values, labels=g.index.astype(str), autopct="%1.1f%%", startangle=90)
     centre_circle = plt.Circle((0, 0), 0.65, fc="white")
     ax.add_artist(centre_circle)
     ax.set_title(f"Receita por {col}")
@@ -91,19 +91,31 @@ def donut_canal_streamlit(df: pd.DataFrame):
 st.sidebar.header("Filtros")
 anos = st.sidebar.multiselect("Ano", options=opts["anos"], default=opts["anos"])
 meses = st.sidebar.multiselect("Mês (YYYY-MM)", options=opts["meses"], default=[])
-cats  = st.sidebar.multiselect("Categoria", options=opts["categorias"], default=[])
+cats  = st.sidebar.multiselect("Categoria", options=opts["categororias"] if "categororias" in opts else opts["categorias"], default=[])
 
-# usa as opções do opts se existirem; senão usa o fallback calculado
+# Canal (usa opts se houver, senão fallback calculado)
 base_canais = (opts.get("canais") or []) or canal_opts
 label_canal = "Canal (Forma de Pagamento)" if CANAL_FALLBACK_ACTIVE else "Canal"
 canais = st.sidebar.multiselect(label_canal, options=base_canais, default=[])
 if CANAL_FALLBACK_ACTIVE:
     st.sidebar.caption("↳ Canal mapeado a partir de **Forma de Pagamento**.")
 
+# Centro de Distribuição
+if CENTRO_COL:
+    centros = st.sidebar.multiselect("Centro de Distribuição", options=centro_opts, default=[])
+else:
+    centros = []
+    st.sidebar.caption("↳ Colunas de centro não encontradas no dataset.")
+
 ufs   = st.sidebar.multiselect("UF", options=opts["estados"], default=[])
 resps = st.sidebar.multiselect("Responsável do Pedido", options=opts["responsaveis"], default=[])
 
+# filtros principais (anos, meses, categorias, canais, UFs, responsáveis)
 df_f = filter_df(df, anos=anos, meses=meses, categorias=cats, canais=canais, estados=ufs, responsaveis=resps)
+
+# filtro adicional por centro (aplicado localmente)
+if CENTRO_COL and centros:
+    df_f = df_f[df_f[CENTRO_COL].astype(str).str.strip().isin(centros)]
 
 # ---------------- KPIs ----------------
 ref_mes = meses[0] if len(meses) == 1 else None
@@ -135,26 +147,20 @@ with tab1:
     fig_ts.update_layout(legend_title=None, xaxis_title="", yaxis_title="")
     left.plotly_chart(fig_ts, use_container_width=True)
 
-    # Barras por categoria — ordenado do maior para o menor (eixo invertido para maior no topo)
+    # Barras por categoria — maior->menor (maiores no topo)
     if "categoria" in df_f.columns and not df_f["categoria"].dropna().empty:
         g = (
             df_f.groupby("categoria", dropna=False)["receita"]
             .sum()
-            .sort_values(ascending=False)   # maior -> menor
+            .sort_values(ascending=False)
             .reset_index()
         )
-        fig_cat = px.bar(
-            g,
-            x="receita",
-            y="categoria",
-            orientation="h",
-            title="Receita por Categoria"
-        )
+        fig_cat = px.bar(g, x="receita", y="categoria", orientation="h", title="Receita por Categoria")
         fig_cat.update_layout(xaxis_title="Receita", yaxis_title="")
-        fig_cat.update_yaxes(autorange="reversed")  # coloca as maiores no topo
+        fig_cat.update_yaxes(autorange="reversed")
         right.plotly_chart(fig_cat, use_container_width=True)
 
-    # Donut por canal (robusto)
+    # Donut por canal
     with right:
         donut_canal_streamlit(df_f)
 
@@ -168,17 +174,10 @@ with tab1:
             .reset_index()
         )
         fig_resp = px.bar(
-            g,
-            x="receita",
-            y="responsavelpedido",
-            orientation="h",
+            g, x="receita", y="responsavelpedido", orientation="h",
             title="Top 10 Faturamento Bruto por Responsável do Pedido"
         )
-        fig_resp.update_layout(
-            xaxis_title="Receita",
-            yaxis_title="",
-            yaxis=dict(autorange="reversed")
-        )
+        fig_resp.update_layout(xaxis_title="Receita", yaxis_title="", yaxis=dict(autorange="reversed"))
         left.plotly_chart(fig_resp, use_container_width=True)
 
 with tab2:
