@@ -246,7 +246,7 @@ k4.metric("Ticket Médio", f"R$ {m['Ticket Médio']:,.2f}".replace(",", ".") if 
 
 st.divider()
 
-tab1, tab2 = st.tabs(["📈 Visão Geral", "🗺️ Mapas"])
+tab1, tab2 ,tab3 ,tab4 = st.tabs(["📈 Visão Geral", "🗺️ Mapas", "x Tabela", "y insight"])
 
 with tab1:
     left, right = st.columns([2, 1])
@@ -331,6 +331,11 @@ with tab2:
     )
 
     c2.plotly_chart(fig_base, use_container_width=True)
+with tab3:
+    c1, c2 = st.columns(2)
 
+with tab4:
+    c1, c2 = st.columns(2)
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
 
