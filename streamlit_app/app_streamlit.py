@@ -32,6 +32,19 @@ def _load():
 
 df, opts = _load()
 
+# ---------- Fallback: Canal = Forma de Pagamento (se 'canal' não existir) ----------
+CANAL_FALLBACK_ACTIVE = False
+if "canal" not in df.columns and "forma_pagamento" in df.columns:
+    df = df.copy()
+    df["canal"] = df["forma_pagamento"]
+    CANAL_FALLBACK_ACTIVE = True
+
+def _unique_sorted(series: pd.Series):
+    return sorted(series.dropna().astype(str).unique().tolist())
+
+# opções calculadas a partir do DF (usadas se opts["canais"] vier vazio)
+canal_opts = _unique_sorted(df["canal"]) if "canal" in df.columns else []
+
 # ---------- helper: donut robusto (matplotlib) ----------
 def donut_canal_streamlit(df: pd.DataFrame):
     cand_cols = ["canal", "canal_venda", "canal_vendas", "forma_pagamento"]
@@ -80,10 +93,12 @@ anos = st.sidebar.multiselect("Ano", options=opts["anos"], default=opts["anos"])
 meses = st.sidebar.multiselect("Mês (YYYY-MM)", options=opts["meses"], default=[])
 cats  = st.sidebar.multiselect("Categoria", options=opts["categorias"], default=[])
 
-# se opts["canais"] vier vazio, usa o fallback calculado acima
-base_canais = opts.get("canais", []) or canal_opts
-label_canal = "Canal (Forma de Pagamento)" if "forma_pagamento" in df.columns else "Canal"
+# usa as opções do opts se existirem; senão usa o fallback calculado
+base_canais = (opts.get("canais") or []) or canal_opts
+label_canal = "Canal (Forma de Pagamento)" if CANAL_FALLBACK_ACTIVE else "Canal"
 canais = st.sidebar.multiselect(label_canal, options=base_canais, default=[])
+if CANAL_FALLBACK_ACTIVE:
+    st.sidebar.caption("↳ Canal mapeado a partir de **Forma de Pagamento**.")
 
 ufs   = st.sidebar.multiselect("UF", options=opts["estados"], default=[])
 resps = st.sidebar.multiselect("Responsável do Pedido", options=opts["responsaveis"], default=[])
@@ -120,12 +135,12 @@ with tab1:
     fig_ts.update_layout(legend_title=None, xaxis_title="", yaxis_title="")
     left.plotly_chart(fig_ts, use_container_width=True)
 
-    # Barras por categoria — ordem decrescente (maiores no topo)
+    # Barras por categoria — ordenado do maior para o menor (eixo invertido para maior no topo)
     if "categoria" in df_f.columns and not df_f["categoria"].dropna().empty:
         g = (
             df_f.groupby("categoria", dropna=False)["receita"]
             .sum()
-            .sort_values(ascending=False)   # menor->maior
+            .sort_values(ascending=False)   # maior -> menor
             .reset_index()
         )
         fig_cat = px.bar(
@@ -148,7 +163,7 @@ with tab1:
         g = (
             df_f.groupby("responsavelpedido", dropna=False)["receita"]
             .sum()
-            .sort_values(ascending=False)  # já ordena do maior para o menor
+            .sort_values(ascending=False)
             .head(10)
             .reset_index()
         )
@@ -162,7 +177,7 @@ with tab1:
         fig_resp.update_layout(
             xaxis_title="Receita",
             yaxis_title="",
-            yaxis=dict(autorange="reversed")  # inverte o eixo Y para maior no topo
+            yaxis=dict(autorange="reversed")
         )
         left.plotly_chart(fig_resp, use_container_width=True)
 
@@ -172,8 +187,3 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
-
-
-
-
-
