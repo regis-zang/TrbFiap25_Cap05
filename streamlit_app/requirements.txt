@@ -4,3 +4,4 @@ numpy>=1.26
 requests>=2.31
 pyarrow>=14
 plotly>=5.18
+matplotlib>=3.7
