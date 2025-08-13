@@ -8,12 +8,16 @@ from maps_plotly import choropleth_receita_por_uf, bubblemap_receita_por_uf
 # --- Paths para assets ---
 BASE_DIR = Path(__file__).parent
 ASSETS_DIR = BASE_DIR / "DashImg"
-LOGO_PATH = ASSETS_DIR / "LogoMelhoresComprasPET_NEW.png"
+LOGO_PATH = ASSETS_DIR / "LogoMelhoresComprasPET_NEW.png"  # ajuste se o nome for outro
 
-# --- Config da página ---
-st.set_page_config(page_title="Mapa de Oportunidades (Pet)", page_icon="📊", layout="wide")
+# --- Configuração da página ---
+st.set_page_config(
+    page_title="Mapa de Oportunidades (Pet)",
+    page_icon="📊",
+    layout="wide"
+)
 
-# --- Header ---
+# --- Header com logo + título ---
 col_logo, col_title = st.columns([1, 6])
 with col_logo:
     if LOGO_PATH.exists():
@@ -29,7 +33,7 @@ def _load():
 
 df, opts = _load()
 
-# ---------- Fallback: Canal = Forma de Pagamento ----------
+# ---------- Fallback: Canal = Forma de Pagamento (se 'canal' não existir) ----------
 CANAL_FALLBACK_ACTIVE = False
 if "canal" not in df.columns and "forma_pagamento" in df.columns:
     df = df.copy()
@@ -39,27 +43,38 @@ if "canal" not in df.columns and "forma_pagamento" in df.columns:
 def _unique_sorted(series: pd.Series):
     return sorted(series.dropna().astype(str).str.strip().unique().tolist())
 
+# opções calculadas a partir do DF (usadas se opts["canais"] vier vazio)
 canal_opts = _unique_sorted(df["canal"]) if "canal" in df.columns else []
 
-# ---------- Centro de Distribuição ----------
-CENTRO_COL = next((c for c in ["centro_distribuicao_normalizado", "centro_distribuicao", "centro_id", "centro"] if c in df.columns), None)
+# ---------- Centro de Distribuição: detectar coluna e opções ----------
+CENTRO_COL = next(
+    (c for c in ["centro_distribuicao_normalizado", "centro_distribuicao", "centro_id", "centro"] if c in df.columns),
+    None
+)
 centro_opts = _unique_sorted(df[CENTRO_COL]) if CENTRO_COL else []
 
-# ---------- Helper: donut robusto (matplotlib) ----------
+# ---------- helper: donut robusto (matplotlib) ----------
 def donut_canal_streamlit(df: pd.DataFrame):
     cand_cols = ["canal", "canal_venda", "canal_vendas", "forma_pagamento"]
     col = next((c for c in cand_cols if c in df.columns), None)
     if not col or "receita" not in df.columns:
         st.info("Colunas necessárias para o donut não encontradas.")
         return
+
     tmp = df[[col, "receita"]].copy()
     tmp[col] = tmp[col].astype(str).str.strip()
     tmp["receita"] = pd.to_numeric(tmp["receita"], errors="coerce")
-    g = (tmp.dropna().groupby(col, dropna=False)["receita"].sum().sort_values(ascending=False))
-    g = g[g > 0]
+
+    g = (tmp.dropna()
+            .groupby(col, dropna=False)["receita"]
+            .sum()
+            .sort_values(ascending=False))
+
+    g = g[g > 0]  # remove não-positivos
     if g.empty:
         st.warning("Sem valores positivos para plotar no donut.")
         return
+
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.pie(g.values, labels=g.index.astype(str), autopct="%1.1f%%", startangle=90)
     centre_circle = plt.Circle((0, 0), 0.65, fc="white")
@@ -78,11 +93,9 @@ def format_hover_as_millions(fig, add_title_suffix=True, title_suffix=" – R$ M
 
     for tr in fig.data:
         vals = None
-        # choropleth normalmente usa 'z'
         if hasattr(tr, "z") and tr.z is not None:
             vals = np.array(tr.z, dtype=float)
         else:
-            # bubble/scatter: tenta color > size
             if hasattr(tr, "marker") and tr.marker is not None:
                 if isinstance(getattr(tr.marker, "color", None), (list, tuple, np.ndarray)):
                     vals = np.array(tr.marker.color, dtype=float)
@@ -91,13 +104,58 @@ def format_hover_as_millions(fig, add_title_suffix=True, title_suffix=" – R$ M
 
         if vals is not None and vals.size:
             tr.customdata = vals / 1e6  # milhões
-            # tenta preservar o label original
-            if getattr(tr, "hovertext", None) is not None:
-                label_expr = "%{hovertext}"
-            else:
-                # fallback comum em choropleth
-                label_expr = "%{location}"
-            tr.hovertemplate = f"{label_expr}<br>Receita=R$ "+"%{customdata:.1f} MM<extra></extra>"
+            label_expr = "%{hovertext}" if getattr(tr, "hovertext", None) is not None else "%{location}"
+            tr.hovertemplate = f"{label_expr}<br>Receita=R$ " + "%{customdata:.1f} MM<extra></extra>"
+    return fig
+
+# ---------- Helpers para Mapa de Bolhas ----------
+def compute_metric_by_uf(df: pd.DataFrame, metric: str) -> pd.Series:
+    """Retorna série indexada por UF com a métrica escolhida."""
+    uf_col = "estado" if "estado" in df.columns else ("uf" if "uf" in df.columns else None)
+    if uf_col is None:
+        return pd.Series(dtype=float)
+
+    if metric == "Ticket Médio":
+        grp = df.groupby(uf_col).agg(receita=("receita", "sum"),
+                                     pedidos=("pedido_id", "nunique"))
+        s = (grp["receita"] / grp["pedidos"]).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    elif metric == "Lucro Líquido" and "lucro_liquido" in df.columns:
+        s = df.groupby(uf_col)["lucro_liquido"].sum()
+    elif metric == "Valor de Comissão" and "valor_comissao" in df.columns:
+        s = df.groupby(uf_col)["valor_comissao"].sum()
+    else:  # Receita
+        s = df.groupby(uf_col)["receita"].sum()
+
+    return s.clip(lower=0)
+
+def adjust_bubble_sizes(fig, values_by_uf: pd.Series, size_max_px: int = 22, size_min_px: int = 3):
+    """Redimensiona bolhas do scatter_geo do Plotly para o range desejado."""
+    if not fig.data:
+        return fig
+    tr = fig.data[0]
+
+    # tenta descobrir a ordem dos UFs no trace
+    labels = None
+    if hasattr(tr, "hovertext") and isinstance(tr.hovertext, (list, tuple, np.ndarray)):
+        labels = [str(x).split("<")[0].strip().upper() for x in tr.hovertext]
+    elif hasattr(tr, "locations") and tr.locations is not None:
+        labels = [str(x).strip().upper() for x in tr.locations]
+    elif hasattr(tr, "text") and isinstance(tr.text, (list, tuple, np.ndarray)):
+        labels = [str(x).split("<")[0].strip().upper() for x in tr.text]
+
+    def norm_key(x): return str(x).strip().upper()[:2]
+    if labels:
+        sizes = [float(values_by_uf.get(norm_key(k), np.nan)) for k in labels]
+    else:
+        # fallback: usa os valores na mesma ordem (se bater)
+        sizes = values_by_uf.values.tolist()
+
+    arr = np.array([0 if (pd.isna(v) or v < 0) else v for v in sizes], dtype=float)
+    maxv = float(arr.max()) if arr.size else 0.0
+    tr.marker.sizemode = "area"
+    tr.marker.sizemin = size_min_px
+    tr.marker.size = arr
+    tr.marker.sizeref = 2.0 * maxv / (size_max_px ** 2) if maxv > 0 else 1.0
     return fig
 
 # ---------------- Sidebar (filtros) ----------------
@@ -106,12 +164,14 @@ anos = st.sidebar.multiselect("Ano", options=opts["anos"], default=opts["anos"])
 meses = st.sidebar.multiselect("Mês (YYYY-MM)", options=opts["meses"], default=[])
 cats  = st.sidebar.multiselect("Categoria", options=opts["categororias"] if "categororias" in opts else opts["categorias"], default=[])
 
+# Canal (usa opts se houver, senão fallback calculado)
 base_canais = (opts.get("canais") or []) or canal_opts
 label_canal = "Canal (Forma de Pagamento)" if CANAL_FALLBACK_ACTIVE else "Canal"
 canais = st.sidebar.multiselect(label_canal, options=base_canais, default=[])
 if CANAL_FALLBACK_ACTIVE:
     st.sidebar.caption("↳ Canal mapeado a partir de **Forma de Pagamento**.")
 
+# Centro de Distribuição
 if CENTRO_COL:
     centros = st.sidebar.multiselect("Centro de Distribuição", options=centro_opts, default=[])
 else:
@@ -121,9 +181,20 @@ else:
 ufs   = st.sidebar.multiselect("UF", options=opts["estados"], default=[])
 resps = st.sidebar.multiselect("Responsável do Pedido", options=opts["responsaveis"], default=[])
 
-# filtros principais
+# Opções do mapa de bolhas
+with st.sidebar.expander("Mapa de bolhas – opções", expanded=False):
+    # opções de métrica disponíveis
+    metric_options = ["Receita", "Ticket Médio"]
+    if "lucro_liquido" in df.columns: metric_options.append("Lucro Líquido")
+    if "valor_comissao" in df.columns: metric_options.append("Valor de Comissão")
+    metric_choice = st.selectbox("Métrica", options=metric_options, index=0)
+    size_max_px = st.slider("Tamanho máximo (px)", min_value=8, max_value=60, value=22, step=1)
+    size_min_px = st.slider("Tamanho mínimo (px)", min_value=0, max_value=10, value=3, step=1)
+    use_log_size = st.checkbox("Escala logarítmica (tamanho)", value=False)
+
+# filtros principais (anos, meses, categorias, canais, UFs, responsáveis)
 df_f = filter_df(df, anos=anos, meses=meses, categorias=cats, canais=canais, estados=ufs, responsaveis=resps)
-# filtro adicional por centro
+# filtro adicional por centro (aplicado localmente)
 if CENTRO_COL and centros:
     df_f = df_f[df_f[CENTRO_COL].astype(str).str.strip().isin(centros)]
 
@@ -183,20 +254,36 @@ with tab1:
             .head(10)
             .reset_index()
         )
-        fig_resp = px.bar(g, x="receita", y="responsavelpedido", orientation="h",
-                          title="Top 10 Faturamento Bruto por Responsável do Pedido")
+        fig_resp = px.bar(
+            g, x="receita", y="responsavelpedido", orientation="h",
+            title="Top 10 Faturamento Bruto por Responsável do Pedido"
+        )
         fig_resp.update_layout(xaxis_title="Receita", yaxis_title="", yaxis=dict(autorange="reversed"))
         left.plotly_chart(fig_resp, use_container_width=True)
 
 with tab2:
     c1, c2 = st.columns(2)
 
+    # Choropleth (hover em MM)
     fig_ch = choropleth_receita_por_uf(df_f)
-    fig_ch = format_hover_as_millions(fig_ch)  # hover: R$ x.y MM
+    fig_ch = format_hover_as_millions(fig_ch)
     c1.plotly_chart(fig_ch, use_container_width=True)
 
+    # Bubble map com métrica escolhida e controle de tamanho
+    # 1) base (usa sua função atual)
     fig_bu = bubblemap_receita_por_uf(df_f, size_max=45, use_log=False)
-    fig_bu = format_hover_as_millions(fig_bu)  # hover: R$ x.y MM
+
+    # 2) valores por UF para a métrica escolhida
+    metric_series = compute_metric_by_uf(df_f, metric_choice)
+    if use_log_size:
+        metric_series = np.log1p(metric_series)
+
+    # 3) reescala as bolhas para o tamanho desejado
+    fig_bu = adjust_bubble_sizes(fig_bu, metric_series, size_max_px=size_max_px, size_min_px=size_min_px)
+
+    # 4) hover em MM (mantém padrão R$ x.y MM)
+    fig_bu = format_hover_as_millions(fig_bu)
+
     c2.plotly_chart(fig_bu, use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
