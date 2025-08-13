@@ -1,4 +1,5 @@
 import streamlit as st, plotly.express as px, pandas as pd
+import matplotlib.pyplot as plt
 from pathlib import Path
 from core_dataviz import load_df, filter_df, kpis, choices
 from maps_plotly import choropleth_receita_por_uf, bubblemap_receita_por_uf
@@ -30,6 +31,48 @@ def _load():
     return df, choices(df)
 
 df, opts = _load()
+
+# ---------- helper: donut robusto (matplotlib) ----------
+def donut_canal_streamlit(df: pd.DataFrame):
+    cand_cols = ["canal", "canal_venda", "canal_vendas", "forma_pagamento"]
+    col = next((c for c in cand_cols if c in df.columns), None)
+    if not col:
+        st.info("Nem 'canal' nem 'forma_pagamento' encontrados; pulando donut.")
+        return
+    if "receita" not in df.columns:
+        st.info("Coluna 'receita' não encontrada.")
+        return
+
+    tmp = df[[col, "receita"]].copy()
+    tmp[col] = tmp[col].astype(str).str.strip()
+    tmp["receita"] = pd.to_numeric(tmp["receita"], errors="coerce")
+
+    g = (tmp.dropna()
+            .groupby(col, dropna=False)["receita"]
+            .sum()
+            .sort_values(ascending=False))
+
+    # remove não-positivos (pie não renderiza bem com <= 0)
+    g = g[g > 0]
+    if g.empty:
+        st.warning("Sem valores positivos para plotar no donut.")
+        return
+
+    # monta o donut
+    fig, ax = plt.subplots(figsize=(6, 6))
+    wedges, texts, autotexts = ax.pie(
+        g.values,
+        labels=g.index.astype(str),
+        autopct="%1.1f%%",
+        startangle=90
+    )
+    centre_circle = plt.Circle((0, 0), 0.65, fc="white")
+    ax.add_artist(centre_circle)
+    ax.set_title(f"Receita por {col}")
+    ax.axis("equal")
+    fig.tight_layout()
+    st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 # ---------------- Sidebar (filtros) ----------------
 st.sidebar.header("Filtros")
@@ -72,12 +115,12 @@ with tab1:
     fig_ts.update_layout(legend_title=None, xaxis_title="", yaxis_title="")
     left.plotly_chart(fig_ts, use_container_width=True)
 
-    # Barras por categoria (ordem decrescente sem limite)
+    # Barras por categoria — ordem decrescente (maiores no topo)
     if "categoria" in df_f.columns and not df_f["categoria"].dropna().empty:
         g = (
             df_f.groupby("categoria", dropna=False)["receita"]
             .sum()
-            .sort_values(ascending=True)
+            .sort_values(ascending=True)   # menor->maior
             .reset_index()
         )
         fig_cat = px.bar(
@@ -88,16 +131,12 @@ with tab1:
             title="Receita por Categoria (ordem decrescente)"
         )
         fig_cat.update_layout(xaxis_title="Receita", yaxis_title="")
+        fig_cat.update_yaxes(autorange="reversed")  # coloca as maiores no topo
         right.plotly_chart(fig_cat, use_container_width=True)
 
-    # Donut por canal
-    if "canal" in df_f.columns and not df_f["canal"].dropna().empty:
-        g = (
-            df_f.groupby("canal", dropna=False)["receita"]
-            .sum().sort_values(ascending=False)
-        ).reset_index()
-        fig_dn = px.pie(g, names="canal", values="receita", hole=0.6, title="Receita por Canal")
-        right.plotly_chart(fig_dn, use_container_width=True)
+    # Donut por canal (robusto)
+    with right:
+        donut_canal_streamlit(df_f)
 
     # Top responsável do pedido
     if "responsavelpedido" in df_f.columns and not df_f["responsavelpedido"].dropna().empty:
@@ -116,5 +155,3 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
-
-
