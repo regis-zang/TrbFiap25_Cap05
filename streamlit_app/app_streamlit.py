@@ -1,4 +1,3 @@
-# app_streamlit.py
 import streamlit as st, plotly.express as px, pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +8,7 @@ from maps_plotly import choropleth_receita_por_uf, bubblemap_receita_por_uf
 # --- Paths para assets ---
 BASE_DIR = Path(__file__).parent
 ASSETS_DIR = BASE_DIR / "DashImg"
-LOGO_PATH = ASSETS_DIR / "LogoMelhoresComprasPET_NEW.png"  # ajuste se o nome for outro
+LOGO_PATH = ASSETS_DIR / "LogoMelhoresComprasPET_NEW.png"
 
 # --- Config da página ---
 st.set_page_config(page_title="Mapa de Oportunidades (Pet)", page_icon="📊", layout="wide")
@@ -79,7 +78,6 @@ def format_choropleth_hover_mm(fig):
             tr.customdata = vals
             label_expr = "%{hovertext}" if getattr(tr, "hovertext", None) is not None else "%{location}"
             tr.hovertemplate = f"{label_expr}<br>Receita=R$ " + "%{customdata:.1f} MM<extra></extra>"
-    # acrescenta sufixo ao título
     if getattr(fig.layout, "title", None) and getattr(fig.layout.title, "text", None):
         if "– R$ MM" not in fig.layout.title.text:
             fig.update_layout(title=str(fig.layout.title.text) + " – R$ MM")
@@ -110,10 +108,9 @@ def compute_metric_by_uf(df: pd.DataFrame, metric: str) -> pd.Series:
         tmp["valor_comissao"] = to_num(tmp["valor_comissao"])
         s = tmp.groupby(uf_col)["valor_comissao"].sum()
 
-    else:  # Receita (default)
-        tmp = df[[uf_col, "receita"]].copy()
-        tmp["receita"] = to_num(tmp["receita"])
-        s = tmp.groupby(uf_col)["receita"].sum()
+    else:
+        # fallback seguro
+        s = pd.Series(dtype=float)
 
     s = pd.to_numeric(s, errors="coerce").fillna(0.0).astype(float)
     return s.clip(lower=0.0)
@@ -129,7 +126,6 @@ def _trace_labels(tr):
     return None
 
 def _align_series_to_trace(series_by_uf: pd.Series, tr) -> np.ndarray:
-    """Retorna valores numéricos na mesma ordem dos pontos do trace."""
     labels = _trace_labels(tr)
     def key(x): return str(x).strip().upper()[:2]
     if labels:
@@ -156,24 +152,34 @@ def _format_brl(v: float, decimals: int = 0) -> str:
     return f"R$ {s}"
 
 def apply_bubble_hover(fig, values_by_uf: pd.Series, metric: str):
-    """Configura o hover:
-       - Receita: R$ x.y MM
-       - Demais métricas: BRL sem conversão (1.234.567,89)"""
+    """Configura o hover: Ticket Médio / Lucro Líquido / Valor de Comissão (sem conversão para milhões)."""
     if not fig.data: return fig
     tr = fig.data[0]
     arr = _align_series_to_trace(values_by_uf, tr)
-
     label_expr = "%{hovertext}" if getattr(tr, "hovertext", None) is not None else "%{location}"
 
-    if metric == "Receita":
-        tr.customdata = (arr / 1e6).astype(float)
-        tr.hovertemplate = f"{label_expr}<br>{metric}=R$ " + "%{customdata:.1f} MM<extra></extra>"
-    else:
-        decimals = 2 if metric == "Ticket Médio" else 0
-        formatted = np.array([_format_brl(v, decimals=decimals) for v in arr], dtype=object)
-        tr.customdata = formatted
-        tr.hovertemplate = f"{label_expr}<br>{metric}=%{{customdata}}<extra></extra>"
+    # Formatação: Ticket Médio com 2 casas; os demais sem casas (se preferir, mude 0->2)
+    decimals = 2 if metric == "Ticket Médio" else 0
+    formatted = np.array([_format_brl(v, decimals=decimals) for v in arr], dtype=object)
+    tr.customdata = formatted
+    tr.hovertemplate = f"{label_expr}<br>{metric}=%{{customdata}}<extra></extra>"
     return fig
+
+# ---------- Base de área (choropleth) por baixo das bolhas ----------
+def prep_area_base(fig_area):
+    """Choropleth suavizado para servir de base sob as bolhas."""
+    for tr in fig_area.data:
+        if hasattr(tr, "showscale"): tr.showscale = False
+        try: tr.hoverinfo = "skip"
+        except Exception: pass
+        try:
+            tr.opacity = 0.55
+            if hasattr(tr, "marker") and hasattr(tr.marker, "line"):
+                tr.marker.line.width = 0.5
+                tr.marker.line.color = "white"
+        except Exception:
+            pass
+    return fig_area
 
 # ---------------- Sidebar (filtros) ----------------
 st.sidebar.header("Filtros")
@@ -198,12 +204,16 @@ else:
 ufs   = st.sidebar.multiselect("UF", options=opts["estados"], default=[])
 resps = st.sidebar.multiselect("Responsável do Pedido", options=opts["responsaveis"], default=[])
 
-# Opções do mapa de bolhas
+# Opções do mapa de bolhas (sem 'Receita')
 with st.sidebar.expander("Mapa de bolhas – opções", expanded=False):
-    metric_options = ["Receita", "Ticket Médio"]
-    if "lucro_liquido" in df.columns:  metric_options.append("Lucro Líquido")
-    if "valor_comissao" in df.columns: metric_options.append("Valor de Comissão")
-    metric_choice = st.selectbox("Métrica", options=metric_options, index=0)
+    metric_options = []
+    if "pedido_id" in df.columns and "receita" in df.columns:  # garantia para cálculo do ticket
+        metric_options.append("Ticket Médio")
+    if "lucro_liquido" in df.columns:
+        metric_options.append("Lucro Líquido")
+    if "valor_comissao" in df.columns:
+        metric_options.append("Valor de Comissão")
+    metric_choice = st.selectbox("Métrica", options=metric_options, index=0 if metric_options else None)
     size_max_px = st.slider("Tamanho máximo (px)", min_value=8, max_value=60, value=22, step=1)
     size_min_px = st.slider("Tamanho mínimo (px)", min_value=0, max_value=10, value=3, step=1)
     use_log_size = st.checkbox("Escala logarítmica (tamanho)", value=False)
@@ -280,25 +290,30 @@ with tab1:
 with tab2:
     c1, c2 = st.columns(2)
 
-    # Choropleth — Receita com hover em MM
+    # Mapa 1: Choropleth de Receita (hover em MM)
     fig_ch = choropleth_receita_por_uf(df_f)
     fig_ch = format_choropleth_hover_mm(fig_ch)
     c1.plotly_chart(fig_ch, use_container_width=True)
 
-    # Bubble map — métrica escolhida
-    fig_bu = bubblemap_receita_por_uf(df_f, size_max=45, use_log=False)
+    # Mapa 2: Bolhas com base de área + métrica escolhida (sem Receita na lista)
+    # 1) base de área pastel
+    fig_base = choropleth_receita_por_uf(df_f)
+    fig_base = prep_area_base(fig_base)
 
-    metric_series = compute_metric_by_uf(df_f, metric_choice)
+    # 2) bolhas
+    fig_bu = bubblemap_receita_por_uf(df_f, size_max=45, use_log=False)
+    metric_series = compute_metric_by_uf(df_f, metric_choice) if metric_choice else pd.Series(dtype=float)
     if use_log_size:
         metric_series = np.log1p(metric_series)
 
     fig_bu = adjust_bubble_sizes(fig_bu, metric_series, size_max_px=size_max_px, size_min_px=size_min_px)
-    fig_bu = apply_bubble_hover(fig_bu, metric_series, metric_choice)
+    fig_bu = apply_bubble_hover(fig_bu, metric_series, metric_choice or "")
 
-    # título dinâmico (para Receita, inclui sufixo R$ MM)
-    title = f"{metric_choice} por UF" + (" – R$ MM" if metric_choice == "Receita" else "")
-    fig_bu.update_layout(title=title)
+    # 3) sobreposição e título dinâmico
+    fig_base.add_traces(fig_bu.data)
+    title = f"{metric_choice} por UF" if metric_choice else "Métrica por UF"
+    fig_base.update_layout(title=title, geo=fig_bu.layout.geo)
 
-    c2.plotly_chart(fig_bu, use_container_width=True)
+    c2.plotly_chart(fig_base, use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
