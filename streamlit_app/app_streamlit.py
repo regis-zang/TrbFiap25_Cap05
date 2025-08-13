@@ -135,15 +135,35 @@ def _align_series_to_trace(series_by_uf: pd.Series, tr) -> np.ndarray:
     arr = np.array([0 if (pd.isna(v) or v < 0) else v for v in vals], dtype=float)
     return arr
 
-def adjust_bubble_sizes(fig, values_by_uf: pd.Series, size_max_px: int = 22, size_min_px: int = 3):
-    if not fig.data: return fig
+def adjust_bubble_sizes(
+    fig,
+    values_by_uf: pd.Series,
+    size_max_px: int = 22,
+    size_min_px: int = 3,
+    bubble_fill: str = "rgba(120,120,120,0.85)",   # cinza (preenchimento)
+    bubble_border: str = "rgba(30,30,30,0.95)"     # contorno mais escuro
+):
+    """Redimensiona as bolhas e aplica estilo cinza com contorno."""
+    if not fig.data:
+        return fig
     tr = fig.data[0]
+
+    # alinhar série à ordem do trace
     arr = _align_series_to_trace(values_by_uf, tr)
+
+    # escala por área
     maxv = float(arr.max()) if arr.size else 0.0
     tr.marker.sizemode = "area"
     tr.marker.sizemin = size_min_px
     tr.marker.size = arr
     tr.marker.sizeref = 2.0 * maxv / (size_max_px ** 2) if maxv > 0 else 1.0
+
+    # >>> estilo em CINZA <<<
+    tr.marker.color = bubble_fill
+    if not hasattr(tr.marker, "line") or tr.marker.line is None:
+        tr.marker.line = {}
+    tr.marker.line.update(width=1.4, color=bubble_border)
+
     return fig
 
 def _format_brl(v: float, decimals: int = 0) -> str:
@@ -317,3 +337,4 @@ with tab2:
     c2.plotly_chart(fig_base, use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
