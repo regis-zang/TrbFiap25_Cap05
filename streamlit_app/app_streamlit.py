@@ -241,7 +241,7 @@ k1.metric("Receita", f"R$ {m['Receita']:,.0f}".replace(",", "."))
 k2.metric("Pedidos", f"{m['Pedidos']:,}".replace(",", "."))
 k3.metric("Itens",   f"{m['Itens']:,.0f}".replace(",", "."))
 k4.metric("Ticket Médio", f"R$ {m['Ticket Médio']:,.2f}".replace(",", ".") if pd.notna(m['Ticket Médio']) else "—")
-k5.metric("Crescimento YoY", f"{m['YoY']:.2%}" if pd.notna(m['YoY']) else "—")
+#k5.metric("Crescimento YoY", f"{m['YoY']:.2%}" if pd.notna(m['YoY']) else "—")
 
 st.divider()
 
@@ -421,3 +421,4 @@ with tab4:
         st.write("🔎 Espaço reservado para insights (gráficos/indicadores adicionais).")
     with c2:
         st.write("💡 Podemos incluir comparativos, variações YoY, outliers por UF etc.")
+
