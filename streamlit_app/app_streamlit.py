@@ -1,4 +1,3 @@
-# app_streamlit.py
 import streamlit as st, plotly.express as px, pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -140,7 +139,7 @@ def adjust_bubble_sizes(
     values_by_uf: pd.Series,
     size_max_px: int = 22,
     size_min_px: int = 3,
-    bubble_fill: str = "rgba(120,120,120,0.85)",   # cinza (preenchimento)
+    bubble_fill: str = "rgba(120,120,120,0.85)",   # cinza
     bubble_border: str = "rgba(30,30,30,0.95)"     # contorno
 ):
     """Redimensiona as bolhas e aplica estilo cinza com contorno."""
@@ -215,7 +214,7 @@ else:
 ufs   = st.sidebar.multiselect("UF", options=opts["estados"], default=[])
 resps = st.sidebar.multiselect("Responsável do Pedido", options=opts["responsaveis"], default=[])
 
-# Opções do mapa de bolhas (REMOVIDO: escala logarítmica)
+# Opções do mapa de bolhas (sem 'Receita')
 with st.sidebar.expander("Mapa de bolhas – opções", expanded=False):
     metric_options = []
     if "pedido_id" in df.columns and "receita" in df.columns:
@@ -242,11 +241,12 @@ k1.metric("Receita", f"R$ {m['Receita']:,.0f}".replace(",", "."))
 k2.metric("Pedidos", f"{m['Pedidos']:,}".replace(",", "."))
 k3.metric("Itens",   f"{m['Itens']:,.0f}".replace(",", "."))
 k4.metric("Ticket Médio", f"R$ {m['Ticket Médio']:,.2f}".replace(",", ".") if pd.notna(m['Ticket Médio']) else "—")
-# k5.metric("Crescimento YoY", f"{m['YoY']:.2%}" if pd.notna(m['YoY']) else "—")
+k5.metric("Crescimento YoY", f"{m['YoY']:.2%}" if pd.notna(m['YoY']) else "—")
 
 st.divider()
 
-tab1, tab2 ,tab3 ,tab4 = st.tabs(["📈 Visão Geral", "🗺️ Mapas", "x Tabela", "y insight"])
+# =================== TABS ===================
+tab1, tab2, tab3, tab4 = st.tabs(["📈 Visão Geral", "🗺️ Mapas", "x Tabela", "y insight"])
 
 with tab1:
     left, right = st.columns([2, 1])
@@ -264,7 +264,7 @@ with tab1:
     fig_ts.update_layout(legend_title=None, xaxis_title="", yaxis_title="")
     left.plotly_chart(fig_ts, use_container_width=True)
 
-    # Barras por categoria — maior->menor (maiores no topo)
+    # Barras por categoria — maior->menor
     if "categoria" in df_f.columns and not df_f["categoria"].dropna().empty:
         g = (
             df_f.groupby("categoria", dropna=False)["receita"]
@@ -281,7 +281,7 @@ with tab1:
     with right:
         donut_canal_streamlit(df_f)
 
-    # Top responsável do pedido (maior no topo)
+    # Top responsável do pedido
     if "responsavelpedido" in df_f.columns and not df_f["responsavelpedido"].dropna().empty:
         g = (
             df_f.groupby("responsavelpedido", dropna=False)["receita"]
@@ -305,7 +305,7 @@ with tab2:
     fig_ch = format_choropleth_hover_mm(fig_ch)
     c1.plotly_chart(fig_ch, use_container_width=True)
 
-    # Mapa 2: Bolhas com base de área + métrica escolhida (sem log)
+    # Mapa 2: Bolhas com base de área + métrica escolhida (sem Receita na lista)
     # 1) base
     fig_base = choropleth_receita_por_uf(df_f)
     fig_base = prep_area_base(fig_base)
@@ -322,20 +322,102 @@ with tab2:
     title = f"{metric_choice} por UF" if metric_choice else "Métrica por UF"
     fig_base.update_layout(title=title, geo=fig_bu.layout.geo)
 
-    # anotação indicando escala linear
-    fig_base.add_annotation(
-        x=0.01, y=0.01, xref="paper", yref="paper", showarrow=False,
-        text="Tamanho das bolhas em escala linear",
-        font=dict(size=11, color="#444"),
-        bgcolor="rgba(255,255,255,0.65)"
-    )
-
     c2.plotly_chart(fig_base, use_container_width=True)
+
 with tab3:
-    c1, c2 = st.columns(2)
+    st.subheader("Tabela de Indicadores")
+    # ----- mapeia/deriva colunas solicitadas -----
+    # Ano mês
+    if "mes" in df_f.columns:
+        col_mes = "mes"
+        df_f["_ano_mes"] = df_f["mes"].astype(str)
+    elif "_data_pedido" in df_f.columns:
+        df_f["_ano_mes"] = pd.to_datetime(df_f["_data_pedido"], errors="coerce").dt.to_period("M").astype(str)
+    else:
+        df_f["_ano_mes"] = ""
+
+    # Forma de pagamento
+    col_fp = "forma_pagamento" if "forma_pagamento" in df_f.columns else ("canal" if "canal" in df_f.columns else None)
+
+    # Centro de distribuição (do que estiver disponível)
+    col_centro = CENTRO_COL if CENTRO_COL in df_f.columns else None
+
+    # Estado
+    col_estado = "estado" if "estado" in df_f.columns else ("uf" if "uf" in df_f.columns else None)
+
+    # Categoria do produto
+    col_cat = "categoriaprod" if "categoriaprod" in df_f.columns else ("categoria_produto" if "categoria_produto" in df_f.columns else ("categoria" if "categoria" in df_f.columns else None))
+
+    # Produto
+    col_prod = next((c for c in ["produto_nome", "produto", "produto_descricao", "item_nome"] if c in df_f.columns), None)
+
+    # Métricas base
+    df_tmp = df_f.copy()
+    df_tmp["receita"] = pd.to_numeric(df_tmp.get("receita", np.nan), errors="coerce")
+    df_tmp["itens"] = pd.to_numeric(df_tmp.get("itens", 0), errors="coerce").fillna(0)
+    df_tmp["valor_comissao"] = pd.to_numeric(df_tmp.get("valor_comissao", np.nan), errors="coerce")
+
+    # Valor unitário (quando possível)
+    df_tmp["_valor_unit"] = np.where(df_tmp["itens"] > 0, df_tmp["receita"] / df_tmp["itens"], np.nan)
+
+    # Dimensões existentes
+    dims = [("_ano_mes", "Ano Mês"),
+            (col_fp, "Forma Pagamento"),
+            (col_centro, "Centro de Distribuição"),
+            (col_estado, "Estado"),
+            (col_cat, "CategoriaProd"),
+            (col_prod, "Produto")]
+
+    dims = [(c, label) for c, label in dims if c is not None]
+
+    if dims:
+        group_cols = [c for c, _ in dims]
+        agg = df_tmp.groupby(group_cols).agg(
+            valor_total_bruto=("receita", "sum"),
+            valor=("._valor_unit".replace(".", ""), "mean"),  # _valor_unit
+            valor_comissao=("valor_comissao", "sum"),
+            qtd_pedido_ordem=("pedido_id", "nunique"),
+            qtd_items=("itens", "sum"),
+        ).reset_index()
+
+        # renomeia dimensões para os rótulos solicitados
+        rename_map = {c: label for c, label in dims}
+        agg = agg.rename(columns=rename_map)
+
+        # Ticket Médio
+        agg["TicketMedio"] = np.where(agg["qtd_pedido_ordem"] > 0, agg["valor_total_bruto"] / agg["qtd_pedido_ordem"], 0.0)
+
+        # organiza colunas na ordem pedida (as que existirem)
+        desired = ["Ano Mês", "Forma Pagamento", "Centro de Distribuição", "Estado", "CategoriaProd", "Produto",
+                   "valor", "valor_total_bruto", "valor_comissao", "qtd_pedido_ordem", "qtd_items", "TicketMedio"]
+        cols = [c for c in desired if c in agg.columns]
+        agg = agg[cols]
+
+        # Exibição com formatação
+        st.dataframe(
+            agg,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "valor": st.column_config.NumberColumn("Valor", format="R$ %.2f"),
+                "valor_total_bruto": st.column_config.NumberColumn("Valor Total Bruto", format="R$ %.2f"),
+                "valor_comissao": st.column_config.NumberColumn("Valor de Comissão", format="R$ %.2f"),
+                "qtd_pedido_ordem": st.column_config.NumberColumn("Qtd Pedidos", format="%d"),
+                "qtd_items": st.column_config.NumberColumn("Qtd Itens", format="%d"),
+                "TicketMedio": st.column_config.NumberColumn("Ticket Médio", format="R$ %.2f"),
+            }
+        )
+
+        # Download CSV
+        csv = agg.to_csv(index=False).encode("utf-8-sig")
+        st.download_button("Baixar CSV", data=csv, file_name="tabela_indicadores.csv", mime="text/csv")
+    else:
+        st.info("Não há colunas suficientes para montar a tabela com as dimensões solicitadas.")
 
 with tab4:
+    st.subheader("Insights")
     c1, c2 = st.columns(2)
-st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
-
-
+    with c1:
+        st.write("🔎 Espaço reservado para insights (gráficos/indicadores adicionais).")
+    with c2:
+        st.write("💡 Podemos incluir comparativos, variações YoY, outliers por UF etc.")
