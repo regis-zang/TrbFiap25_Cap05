@@ -11,7 +11,7 @@ LOGO_PATH = ASSETS_DIR / "LogoMelhoresComprasPET_NEW.png"  # ajuste se o nome fo
 
 # --- Configuração da página ---
 st.set_page_config(
-    page_title="Melhores Compras – Dashboard de Vendas",
+    page_title="Mapa de Oportunidades (Pet)",
     page_icon="📊",
     layout="wide"
 )
@@ -186,3 +186,4 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
