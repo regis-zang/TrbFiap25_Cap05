@@ -6,7 +6,7 @@ Trab Melhores Compras DATA VIZ E DATA SCIENCE
 ### ETL
 [Primeira Etapa Analise e Limpeza dos Dados](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/001-TratamentoDaBase.md)
 
-### Data VIZ
+### Data VIZ - SAC
 [Segunda Etapa Parte 001 - Data Viz usando SAP Analytics Cloud](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/002%20-%20StoryTelling%20no%20SAC.md)
 
  ### Segunda Etapa Parte 002 - Data Viz usando Tableau
@@ -15,7 +15,8 @@ Trab Melhores Compras DATA VIZ E DATA SCIENCE
  ### Segunda Etapa Parte 003 - Data Viz usando PowerBi
  Detalhes aplicado na Vizualização de dados PowerBi
 
- ### Segunda Etapa Parte 004 - Data Viz usando Python - Estou atuando Aqui
+### Data VIZ - PYTHON
+ [Segunda Etapa Parte 004 - Data Viz usando Python](https://github.com/regis-zang/TrbFiap25_Cap05/blob/main/003%20-%20StoryTelling%20no%20Python.md)
  Detalhes aplicado na Vizualização de dados Python
 
 
