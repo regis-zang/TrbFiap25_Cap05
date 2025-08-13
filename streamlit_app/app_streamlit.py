@@ -77,7 +77,7 @@ with tab1:
         g = (
             df_f.groupby("categoria", dropna=False)["receita"]
             .sum()
-            .sort_values(ascending=False)
+            .sort_values(ascending=True)
             .reset_index()
         )
         fig_cat = px.bar(
@@ -116,4 +116,5 @@ with tab2:
     c2.plotly_chart(bubblemap_receita_por_uf(df_f, size_max=45, use_log=False), use_container_width=True)
 
 st.caption("Preview em Streamlit — filtros no painel lateral, gráficos interativos e mapas sem dependências pesadas.")
+
 
